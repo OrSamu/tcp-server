@@ -7,6 +7,8 @@ using namespace std;
 #include <string.h>
 #include <time.h>
 #include <sstream>
+#include <iostream>
+#include <fstream>
 
 struct SocketState
 {
@@ -309,74 +311,43 @@ void receiveMessage(int index)
 
 }
 
+string htmlFileToStr(string fileName) {
+	string res, curLine;
+
+	ifstream file("./borat_en.html");
+
+	while (getline(file, curLine)) {
+		res.append(curLine);
+	}
+
+	file.close();
+	return res;
+}
+
 void sendBorat(SOCKET connected) {
 	string       text;
 	stringstream stream;
+	string sendFile = htmlFileToStr("./borat_en.html");
 
-	FILE* sendFile = fopen("./borat_en.html", "r");
-	if (sendFile == NULL) /* check it the file was opened */
+	if (sendFile == "") /* check it the file was opened */
 		return;
 
-	fseek(sendFile, 0L, SEEK_END);
-	/* you can use a stringstream, it's cleaner */
-	long totalBytes = ftell(sendFile);
-	stream << "HTTP/1.1 200 OK\nContent-length: " << totalBytes << "\n";
-	fseek(sendFile, 0L, SEEK_SET);
-
+	
+	long int totalBytes = sendFile.length();
+	stream << "HTTP/1.1 200 OK\nContent-length: " << totalBytes << "\n" << "Content-Type: text/html\n\n";
+	
 	text = stream.str();
 	/* you don't need a vector and strcpy to a char array, just call the .c_str() member
 	 * of the string class and the .length() member for it's length
 	 */
 	send(connected, text.c_str(), text.length(), 0);
 
-	std::cout << "Sent : " << text << std::endl;
-
-	text = "Content-Type: text/html\n\n";
-	send(connected, text.c_str(), text.length(), 0);
-
-	std::cout << "Sent : %s" << text << std::endl;
-	while (feof(sendFile) == 0)
+	int bytesSent = send(connected, sendFile.c_str(), (int)totalBytes, 0);
+	if (SOCKET_ERROR == bytesSent)
 	{
-		int  numread;
-		char sendBuffer[500];
-
-		numread = fread(sendBuffer, sizeof(unsigned char), 300, sendFile);
-		if (numread > 0)
-		{
-			char* sendBuffer_ptr;
-
-			sendBuffer_ptr = sendBuffer;
-			do {
-				fd_set  wfd;
-				timeval tm;
-
-				FD_ZERO(&wfd);
-				FD_SET(connected, &wfd);
-
-				tm.tv_sec = 10;
-				tm.tv_usec = 0;
-				/* first call select, and if the descriptor is writeable, call send */
-				if (select(1 + connected, NULL, &wfd, NULL, &tm) > 0)
-				{
-					int numsent;
-
-					numsent = send(connected, sendBuffer_ptr, numread, 0);
-					if (SOCKET_ERROR == numsent)
-					{
-						cout << "HTTP Server: Error at sendBorat(): " << WSAGetLastError() << endl;
-						return;
-					}
-
-					cout << "Time Server: Sent: " << numsent << "/" << totalBytes << "bytes of the message" << "\n";
-
-					sendBuffer_ptr += numsent;
-					numread -= numsent;
-				}
-			} while (numread > 0);
-		}
+		cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;	
+		return;
 	}
-	/* don't forget to close the file. */
-	fclose(sendFile);
 }
 
 void sendMessage(int index)
