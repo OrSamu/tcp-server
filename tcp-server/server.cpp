@@ -1,29 +1,31 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <iostream>
 using namespace std;
 #pragma comment(lib, "Ws2_32.lib")
 #include <winsock2.h>
 #include <string.h>
 #include <time.h>
+#include <sstream>
 
 struct SocketState
 {
 	SOCKET id;			// Socket handle
 	int	recv;			// Receiving?
 	int	send;			// Sending?
-	int sendSubType;	// Sending sub-type
+	string requestType;	// Sending sub-type
 	char buffer[128];
 	int len;
 };
 
-const int TIME_PORT = 27015;
+const int HTTP_PORT = 80;
 const int MAX_SOCKETS = 60;
 const int EMPTY = 0;
 const int LISTEN = 1;
 const int RECEIVE = 2;
 const int IDLE = 3;
 const int SEND = 4;
-const int SEND_TIME = 1;
+const string GET = "GET";
 const int SEND_SECONDS = 2;
 
 bool addSocket(SOCKET id, int what);
@@ -98,7 +100,7 @@ void main()
 	// IP Port. The htons (host to network - short) function converts an
 	// unsigned short from host to TCP/IP network byte order 
 	// (which is big-endian).
-	serverService.sin_port = htons(TIME_PORT);
+	serverService.sin_port = htons(HTTP_PORT);
 
 	// Bind the socket for client's requests.
 
@@ -288,20 +290,12 @@ void receiveMessage(int index)
 
 		if (sockets[index].len > 0)
 		{
-			if (strncmp(sockets[index].buffer, "TimeString", 10) == 0)
+			if (strncmp(sockets[index].buffer, GET.c_str(), 3) == 0)
 			{
 				sockets[index].send = SEND;
-				sockets[index].sendSubType = SEND_TIME;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[10], sockets[index].len - 10);
-				sockets[index].len -= 10;
-				return;
-			}
-			else if (strncmp(sockets[index].buffer, "SecondsSince1970", 16) == 0)
-			{
-				sockets[index].send = SEND;
-				sockets[index].sendSubType = SEND_SECONDS;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[16], sockets[index].len - 16);
-				sockets[index].len -= 16;
+				sockets[index].requestType = GET;
+				memcpy(sockets[index].buffer, &sockets[index].buffer[3], sockets[index].len - 3);
+				sockets[index].len -= 3;
 				return;
 			}
 			else if (strncmp(sockets[index].buffer, "Exit", 4) == 0)
@@ -315,42 +309,86 @@ void receiveMessage(int index)
 
 }
 
+void sendBorat(SOCKET connected) {
+	string       text;
+	stringstream stream;
+
+	FILE* sendFile = fopen("./borat_en.html", "r");
+	if (sendFile == NULL) /* check it the file was opened */
+		return;
+
+	fseek(sendFile, 0L, SEEK_END);
+	/* you can use a stringstream, it's cleaner */
+	long totalBytes = ftell(sendFile);
+	stream << "HTTP/1.1 200 OK\nContent-length: " << totalBytes << "\n";
+	fseek(sendFile, 0L, SEEK_SET);
+
+	text = stream.str();
+	/* you don't need a vector and strcpy to a char array, just call the .c_str() member
+	 * of the string class and the .length() member for it's length
+	 */
+	send(connected, text.c_str(), text.length(), 0);
+
+	std::cout << "Sent : " << text << std::endl;
+
+	text = "Content-Type: text/html\n\n";
+	send(connected, text.c_str(), text.length(), 0);
+
+	std::cout << "Sent : %s" << text << std::endl;
+	while (feof(sendFile) == 0)
+	{
+		int  numread;
+		char sendBuffer[500];
+
+		numread = fread(sendBuffer, sizeof(unsigned char), 300, sendFile);
+		if (numread > 0)
+		{
+			char* sendBuffer_ptr;
+
+			sendBuffer_ptr = sendBuffer;
+			do {
+				fd_set  wfd;
+				timeval tm;
+
+				FD_ZERO(&wfd);
+				FD_SET(connected, &wfd);
+
+				tm.tv_sec = 10;
+				tm.tv_usec = 0;
+				/* first call select, and if the descriptor is writeable, call send */
+				if (select(1 + connected, NULL, &wfd, NULL, &tm) > 0)
+				{
+					int numsent;
+
+					numsent = send(connected, sendBuffer_ptr, numread, 0);
+					if (SOCKET_ERROR == numsent)
+					{
+						cout << "HTTP Server: Error at sendBorat(): " << WSAGetLastError() << endl;
+						return;
+					}
+
+					cout << "Time Server: Sent: " << numsent << "/" << totalBytes << "bytes of the message" << "\n";
+
+					sendBuffer_ptr += numsent;
+					numread -= numsent;
+				}
+			} while (numread > 0);
+		}
+	}
+	/* don't forget to close the file. */
+	fclose(sendFile);
+}
+
 void sendMessage(int index)
 {
 	int bytesSent = 0;
 	char sendBuff[255];
 
 	SOCKET msgSocket = sockets[index].id;
-	if (sockets[index].sendSubType == SEND_TIME)
+	if (sockets[index].requestType == GET)
 	{
-		// Answer client's request by the current time string.
-
-		// Get the current time.
-		time_t timer;
-		time(&timer);
-		// Parse the current time to printable string.
-		strcpy(sendBuff, ctime(&timer));
-		sendBuff[strlen(sendBuff) - 1] = 0; //to remove the new-line from the created string
+		sendBorat(msgSocket);
 	}
-	else if (sockets[index].sendSubType == SEND_SECONDS)
-	{
-		// Answer client's request by the current time in seconds.
-
-		// Get the current time.
-		time_t timer;
-		time(&timer);
-		// Convert the number to string.
-		itoa((int)timer, sendBuff, 10);
-	}
-
-	bytesSent = send(msgSocket, sendBuff, (int)strlen(sendBuff), 0);
-	if (SOCKET_ERROR == bytesSent)
-	{
-		cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;
-		return;
-	}
-
-	cout << "Time Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n";
 
 	sockets[index].send = IDLE;
 }

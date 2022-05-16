@@ -1,0 +1,4 @@
+﻿  server.cpp
+C:\Users\ניר\Documents\לימודים\networks\tcp-server\tcp-server\server.cpp(42,1): warning C4326: return type of 'main' should be 'int' instead of 'void'
+C:\Users\ניר\Documents\לימודים\networks\tcp-server\tcp-server\server.cpp(385,7): warning C4101: 'sendBuff': unreferenced local variable
+  tcp-server.vcxproj -> C:\Users\ניר\Documents\לימודים\networks\tcp-server\tcp-server\Debug\tcp-server.exe
