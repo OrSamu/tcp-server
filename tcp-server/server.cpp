@@ -9,16 +9,7 @@ using namespace std;
 #include <sstream>
 #include <iostream>
 #include <fstream>
-
-struct SocketState
-{
-	SOCKET id;			// Socket handle
-	int	recv;			// Receiving?
-	int	send;			// Sending?
-	string requestType;	// Sending sub-type
-	char buffer[128];
-	int len;
-};
+#include "http.h"
 
 const int HTTP_PORT = 80;
 const int MAX_SOCKETS = 60;
@@ -218,6 +209,7 @@ bool addSocket(SOCKET id, int what)
 			sockets[i].recv = what;
 			sockets[i].send = IDLE;
 			sockets[i].len = 0;
+			sockets[i].req = {};
 			socketsCount++;
 			return (true);
 		}
@@ -286,21 +278,19 @@ void receiveMessage(int index)
 	else
 	{
 		sockets[index].buffer[len + bytesRecv] = '\0'; //add the null-terminating to make it a string
-		cout << "Time Server: Recieved: " << bytesRecv << " bytes of \"" << &sockets[index].buffer[len] << "\" message.\n";
+		cout << "Http Server: Recieved: " << bytesRecv << " bytes of \"" << &sockets[index].buffer[len] << "\" message.\n";
 
 		sockets[index].len += bytesRecv;
 
 		if (sockets[index].len > 0)
 		{
-			if (strncmp(sockets[index].buffer, GET.c_str(), 3) == 0)
-			{
+			if (sockets[index].send == IDLE) {
+				parseRequest(sockets[index]);
+				strcpy(sockets[index].buffer, "");
+				sockets[index].len = 0;
 				sockets[index].send = SEND;
-				sockets[index].requestType = GET;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[3], sockets[index].len - 3);
-				sockets[index].len -= 3;
-				return;
-			}
-			else if (strncmp(sockets[index].buffer, "Exit", 4) == 0)
+			}			
+			else if (sockets[index].req.type.compare("Exit") == 0)
 			{
 				closesocket(msgSocket);
 				removeSocket(index);
@@ -314,7 +304,7 @@ void receiveMessage(int index)
 string htmlFileToStr(string fileName) {
 	string res, curLine;
 
-	ifstream file("./borat_en.html");
+	ifstream file(string("./").append(fileName));
 
 	while (getline(file, curLine)) {
 		res.append(curLine);
@@ -324,10 +314,24 @@ string htmlFileToStr(string fileName) {
 	return res;
 }
 
-void sendBorat(SOCKET connected) {
+void sendBorat(SocketState &socket) {
 	string       text;
 	stringstream stream;
-	string sendFile = htmlFileToStr("./borat_en.html");
+	SOCKET connected = socket.id;
+
+	short length = socket.req.qs.size();
+	string filename="en";
+
+	for (short i = 0; i < length; i=i+2) {
+		if (socket.req.qs[i].compare("lang")== 0) {
+			filename = socket.req.qs[i+1];
+		}
+	}
+
+	filename.append("_");
+	filename.append(socket.req.path.substr(1, socket.req.path.length()));
+
+	string sendFile = htmlFileToStr(filename);
 
 	if (sendFile == "") /* check it the file was opened */
 		return;
@@ -355,10 +359,9 @@ void sendMessage(int index)
 	int bytesSent = 0;
 	char sendBuff[255];
 
-	SOCKET msgSocket = sockets[index].id;
-	if (sockets[index].requestType == GET)
+	if (sockets[index].req.type == GET)
 	{
-		sendBorat(msgSocket);
+		sendBorat(sockets[index]);
 	}
 
 	sockets[index].send = IDLE;

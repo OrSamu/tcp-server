@@ -18,8 +18,19 @@
     <ClCompile Include="server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="http.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="borat_en.html" />
+    <None Include="en_borat.html" />
+    <None Include="fr_borat.html" />
+    <None Include="he_borat.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="http.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

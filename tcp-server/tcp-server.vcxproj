@@ -139,10 +139,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="http.cpp" />
     <ClCompile Include="server.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="borat_en.html" />
+    <None Include="en_borat.html" />
+    <None Include="fr_borat.html" />
+    <None Include="he_borat.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="http.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
