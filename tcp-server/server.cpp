@@ -19,6 +19,13 @@ const int RECEIVE = 2;
 const int IDLE = 3;
 const int SEND = 4;
 const string GET = "GET";
+const string PUT = "PUT";
+const string POST = "POST";
+const string DELETEREQ = "DELETE";
+const string TRACE = "TRACE";
+const string HEAD = "HEAD";
+const string OPTIONS = "OPTIONS";
+
 const int SEND_SECONDS = 2;
 
 bool addSocket(SOCKET id, int what);
@@ -29,7 +36,6 @@ void sendMessage(int index);
 
 struct SocketState sockets[MAX_SOCKETS] = { 0 };
 int socketsCount = 0;
-
 
 void main()
 {
@@ -318,20 +324,8 @@ void sendBorat(SocketState &socket) {
 	string       text;
 	stringstream stream;
 	SOCKET connected = socket.id;
-
-	short length = socket.req.qs.size();
-	string filename="en";
-
-	for (short i = 0; i < length; i=i+2) {
-		if (socket.req.qs[i].compare("lang")== 0) {
-			filename = socket.req.qs[i+1];
-		}
-	}
-
-	filename.append("_");
-	filename.append(socket.req.path.substr(1, socket.req.path.length()));
-
-	string sendFile = htmlFileToStr(filename);
+	string fileName = getFileName(socket.req.qs, socket.req.path);
+	string sendFile = htmlFileToStr(fileName);
 
 	if (sendFile == "") /* check it the file was opened */
 		return;
@@ -358,11 +352,17 @@ void sendMessage(int index)
 {
 	int bytesSent = 0;
 	char sendBuff[255];
+	string reqType = sockets[index].req.type;
 
-	if (sockets[index].req.type == GET)
+	if (reqType == GET)
 	{
 		sendBorat(sockets[index]);
 	}
+	if (reqType == PUT)
+	{
+		updateFile(sockets[index]);
+	}
+
 
 	sockets[index].send = IDLE;
 }

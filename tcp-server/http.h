@@ -1,10 +1,14 @@
 #pragma once
 #define _CRT_SECURE_NO_WARNINGS
-#include <string.h> 
 #include <iostream>
-using namespace std;
-#include <vector> 
+#include <fstream>
+#include <sstream>
+#include <string.h> 
 #include <winsock2.h>
+#include <vector> 
+
+using namespace std;
+
 
 struct Request
 {
@@ -19,9 +23,11 @@ struct SocketState
 	int	recv;			// Receiving?
 	int	send;			// Sending?
 	Request req;	// Sending sub-type
-	char buffer[128];
+	char buffer[4096];
 	int len;
 };
 
 void breakQueryParams(vector<string> &, string);
 void parseRequest(SocketState&);
+void updateFile(SocketState& socket);
+string getFileName(vector<string> query, string path);
