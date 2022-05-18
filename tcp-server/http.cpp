@@ -1,16 +1,27 @@
 #include "http.h"
 
-void parseRequest(SocketState &socket) {
-    char* buff = socket.buffer;
-    bool hasQs = string(buff).find("?");
-    char* token = strtok(buff, " ?");
+int parseRequest(SocketState &socket) {
+    string stringBuff = string(socket.buffer);
+    short reqEnd = stringBuff.find("\r\n\r\n");
+    char* reqBuff = (char*)malloc(reqEnd);
+
+    if (reqEnd == -1) {
+        return -1;
+    }
+    
+    reqEnd += 4;
+    strncpy(reqBuff, socket.buffer, reqEnd);    
+    memcpy(socket.buffer, &socket.buffer[reqEnd], socket.len - reqEnd);
+    socket.len -= reqEnd;
+    bool hasQs = string(reqBuff).find("?");
+    char* token = strtok(reqBuff, " :?\r\n");
     vector<string> headers;
 
     while (token != nullptr)
     {
         headers.push_back(string(token));
         cout << string(token) << endl;
-        token = strtok(nullptr, " ?");
+        token = strtok(nullptr, " :?\r\n");
     }
 
     socket.req.type = headers[0];
@@ -18,6 +29,22 @@ void parseRequest(SocketState &socket) {
 
     if(hasQs)
         breakQueryParams(socket.req.qs, headers[2]);
+
+    for (int i = 0; i < headers.size(); i++) {
+        if (headers[i].compare("Content-Length") == 0) {
+            socket.req.contentLength = stoi(headers[i + 1]);
+        }
+    }
+
+    int bodyLen = socket.req.contentLength;
+
+    if (socket.req.contentLength > 0) {
+        socket.req.body.append(stringBuff.substr(reqEnd, bodyLen));
+        memcpy(socket.buffer, &socket.buffer[bodyLen], socket.len - bodyLen);
+        socket.len -= bodyLen;
+    }
+
+    return 1;
 }
 
 void breakQueryParams(vector<string>& qs, string query) {
@@ -57,13 +84,7 @@ void updateFile(SocketState& socket)
 {
     string fileName = getFileName(socket.req.qs, socket.req.path);
     ofstream fileToCreate (fileName, ios_base::trunc);
-    
-    fileToCreate << "Request type is: " << socket.req.type << endl;
-    fileToCreate << "Request path is: " << socket.req.path << endl;
-    for (short i = 0; i < socket.req.qs.size(); i+=2)
-    {
-        fileToCreate << socket.req.qs[i] << endl;
-    }
+    fileToCreate << socket.req.body;
     fileToCreate.close();
 }
 
