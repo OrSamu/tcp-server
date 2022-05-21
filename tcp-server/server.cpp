@@ -18,13 +18,6 @@ const int LISTEN = 1;
 const int RECEIVE = 2;
 const int IDLE = 3;
 const int SEND = 4;
-const string GET = "GET";
-const string PUT = "PUT";
-const string POST = "POST";
-const string DELETEREQ = "DELETE";
-const string TRACE = "TRACE";
-const string HEAD = "HEAD";
-const string OPTIONS = "OPTIONS";
 
 const int SEND_SECONDS = 2;
 
@@ -290,17 +283,30 @@ void receiveMessage(int index)
 
 		if (sockets[index].len > 0)
 		{
-			if (sockets[index].send == IDLE) {
-				parseRequest(sockets[index]);
-				strcpy(sockets[index].buffer, "");
-				sockets[index].len = 0;
-				sockets[index].send = SEND;
-			}			
-			else if (sockets[index].req.type.compare("Exit") == 0)
-			{
-				closesocket(msgSocket);
-				removeSocket(index);
+			if (sockets[index].req.state == FINISH_LOAD) {
 				return;
+			}
+
+			if (sockets[index].req.state == START_LOAD) {
+				time(&sockets[index].lastInputTime);
+			}			
+			else 
+			{
+				time_t now;
+				time(&now);
+				double diff = difftime(now, sockets[index].lastInputTime) / 60;
+				
+				if (diff > 2) {
+					closesocket(msgSocket);
+					removeSocket(index);
+					return;
+				}
+			}
+
+			int ERROR_CODE = parseRequest(sockets[index]);
+
+			if (ERROR_CODE != -1) {
+				sockets[index].send = SEND;
 			}
 		}
 	}
@@ -332,7 +338,7 @@ void sendBorat(SocketState &socket) {
 
 	
 	long int totalBytes = sendFile.length();
-	stream << "HTTP/1.1 200 OK\nContent-length: " << totalBytes << "\n" << "Content-Type: text/html\n\n";
+	stream << "HTTP/1.1 200 OK\nContent-length: " << totalBytes << "\n" << "Content-Type: text/html\r\n\r\n";
 	
 	text = stream.str();
 	/* you don't need a vector and strcpy to a char array, just call the .c_str() member
@@ -343,7 +349,7 @@ void sendBorat(SocketState &socket) {
 	int bytesSent = send(connected, sendFile.c_str(), (int)totalBytes, 0);
 	if (SOCKET_ERROR == bytesSent)
 	{
-		cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;	
+		cout << "HTTP Server: Error at send(): " << WSAGetLastError() << endl;	
 		return;
 	}
 }
@@ -352,7 +358,7 @@ void sendMessage(int index)
 {
 	int bytesSent = 0;
 	char sendBuff[255];
-	string reqType = sockets[index].req.type;
+	string reqType = sockets[index].req.method;
 
 	if (reqType == GET)
 	{
@@ -361,8 +367,11 @@ void sendMessage(int index)
 	if (reqType == PUT)
 	{
 		updateFile(sockets[index]);
+		string res = "HTTP/1.1 200 OK\nContent-length:0\nContent-Type: text/plain\r\n\r\n";
+		send(sockets[index].id, res.c_str(), res.length(), 0);
 	}
+	Request newReq;
+	sockets[index].req = newReq;
 
-
-	sockets[index].send = IDLE;
+	sockets[index].send = IDLE;	
 }

@@ -9,11 +9,25 @@
 
 using namespace std;
 
+const string GET = "GET";
+const string PUT = "PUT";
+const string POST = "POST";
+const string DELETEREQ = "DELETE";
+const string TRACE = "TRACE";
+const string HEAD = "HEAD";
+const string OPTIONS = "OPTIONS";
+
+const short START_LOAD = 0;
+const short PARTIAL_LOAD = 1;
+const short FINISH_LOAD = 2;
 
 struct Request
 {
-	string type;
+	string method;
 	string path;
+	string body;
+	short state = START_LOAD;
+	int contentLength=0;
 	vector<string> qs;
 };
 
@@ -24,10 +38,13 @@ struct SocketState
 	int	send;			// Sending?
 	Request req;	// Sending sub-type
 	char buffer[4096];
+	time_t lastInputTime;
 	int len;
 };
 
 void breakQueryParams(vector<string> &, string);
-void parseRequest(SocketState&);
-void updateFile(SocketState& socket);
-string getFileName(vector<string> query, string path);
+int parseRequest(SocketState&);
+int parseHeaders(SocketState&);
+void parseBody(SocketState&);
+void updateFile(SocketState&);
+string getFileName(vector<string>, string);
