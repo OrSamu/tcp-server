@@ -1,6 +1,8 @@
 #include "http.h"
 
-int parseRequest(SocketState &socket) {
+Request parseRequest(SocketState &socket) {
+    Request req;
+
     string stringBuff = string(socket.buffer);
     short reqEnd = stringBuff.find("\r\n\r\n");
     char* reqBuff = (char*)malloc(reqEnd);
@@ -47,6 +49,29 @@ int parseRequest(SocketState &socket) {
     return 1;
 }
 
+Response handleRequests(Request& req) {
+    Response res;
+
+    if (req.type == GET) {
+        handleGetRequest(req, res);
+    }
+    else if (req.type == PUT) {
+        //handlePutReq(SocketState & socket);
+    }
+    else if (req.type == POST) {
+    }
+    else if (req.type == DELETEREQ) {
+    }
+    else if (req.type == TRACE) {
+    }
+    else if (req.type == HEAD) {
+        handleHeadReq(req, res);
+    }
+    else if (req.type == OPTIONS) {
+    }
+}
+
+
 void breakQueryParams(vector<string>& qs, string query) {
     char *q = (char*)malloc(query.length());
 
@@ -80,7 +105,35 @@ string getFileName(vector<string> query, string path)
     return fileName;
 }
 
-void updateFile(SocketState& socket)
+void handleGetRequest(SocketState& socket) {
+    string       text;
+    stringstream stream;
+    SOCKET connected = socket.id;
+    string fileName = getFileName(socket.req.qs, socket.req.path);
+    string sendFile = htmlFileToStr(fileName);
+
+    if (sendFile == "") /* check it the file was opened */
+        return;
+
+
+    long int totalBytes = sendFile.length();
+    stream << "HTTP/1.1 200 OK\nContent-length: " << totalBytes << "\n" << "Content-Type: text/html\r\n\r\n";
+
+    text = stream.str();
+    /* you don't need a vector and strcpy to a char array, just call the .c_str() member
+     * of the string class and the .length() member for it's length
+     */
+    send(connected, text.c_str(), text.length(), 0);
+
+    int bytesSent = send(connected, sendFile.c_str(), (int)totalBytes, 0);
+    if (SOCKET_ERROR == bytesSent)
+    {
+        cout << "HTTP Server: Error at send(): " << WSAGetLastError() << endl;
+        return;
+    }
+}
+
+void handlePutReq(SocketState& socket)
 {
     string fileName = getFileName(socket.req.qs, socket.req.path);
     ofstream fileToCreate (fileName, ios_base::trunc);
@@ -88,3 +141,33 @@ void updateFile(SocketState& socket)
     fileToCreate.close();
 }
 
+void handleHeadReq(Request& request, Response& response)
+{
+    bool isFileExist = false;
+    string fileName = getFileName(socket.req.qs, socket.req.path);
+    ifstream fileToCheck(fileName, ios_base::in);
+    Response response;
+
+    if (fileToCheck.is_open())
+    {
+        response.statusCode = OK;
+        fileToCheck.close();
+    }
+    else
+    {
+        response.statusCode = NOT_FOUND;
+    }
+
+    response.body = "";
+    response.bodyLength = 0;
+
+    return; //responseToString(response);
+}
+
+string responseToString(Response response) {
+    string responseString;
+
+    responseString.append(response.httpVersion + " ");
+    responseString.append(to_string(response.statusCode) + " ");
+
+}
