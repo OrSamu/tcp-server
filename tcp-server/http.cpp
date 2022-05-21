@@ -1,21 +1,45 @@
 #include "http.h"
 
 int parseRequest(SocketState &socket) {
+    socket.req.state = PARTIAL_LOAD;
+
+    if (socket.req.method.compare("") == 0) {
+        int headerError = parseHeaders(socket);
+
+        if (headerError == -1)
+            return -1;
+    }
+
+    if (socket.req.contentLength > 0 &&
+        socket.req.body.length() != socket.req.contentLength) {
+        parseBody(socket);
+
+        if (socket.req.body.length() != socket.req.contentLength)
+            return -1;
+    }
+
+    socket.req.state = FINISH_LOAD;
+    return 1;
+}
+
+int parseHeaders(SocketState& socket) {
     string stringBuff = string(socket.buffer);
     short reqEnd = stringBuff.find("\r\n\r\n");
-    char* reqBuff = (char*)malloc(reqEnd);
+    char reqBuff[4096];
 
     if (reqEnd == -1) {
         return -1;
     }
-    
+
+    vector<string> headers;
     reqEnd += 4;
-    strncpy(reqBuff, socket.buffer, reqEnd);    
+    strncpy(reqBuff, socket.buffer, reqEnd);
     memcpy(socket.buffer, &socket.buffer[reqEnd], socket.len - reqEnd);
     socket.len -= reqEnd;
+    socket.buffer[socket.len] = '\0';
     bool hasQs = string(reqBuff).find("?");
+    
     char* token = strtok(reqBuff, " :?\r\n");
-    vector<string> headers;
 
     while (token != nullptr)
     {
@@ -24,10 +48,10 @@ int parseRequest(SocketState &socket) {
         token = strtok(nullptr, " :?\r\n");
     }
 
-    socket.req.type = headers[0];
+    socket.req.method = headers[0];
     socket.req.path = headers[1];
 
-    if(hasQs)
+    if (hasQs)
         breakQueryParams(socket.req.qs, headers[2]);
 
     for (int i = 0; i < headers.size(); i++) {
@@ -36,15 +60,21 @@ int parseRequest(SocketState &socket) {
         }
     }
 
-    int bodyLen = socket.req.contentLength;
+    return 1;
+}
 
-    if (socket.req.contentLength > 0) {
-        socket.req.body.append(stringBuff.substr(reqEnd, bodyLen));
+void parseBody(SocketState& socket) {
+    string stringBuff = string(socket.buffer);
+    int remaining = socket.req.contentLength - socket.req.body.length();
+    int available = socket.len;
+    int bodyLen = min(remaining, available);
+
+    if (bodyLen > 0) {
+        socket.req.body.append(stringBuff.substr(0, bodyLen));
         memcpy(socket.buffer, &socket.buffer[bodyLen], socket.len - bodyLen);
         socket.len -= bodyLen;
+        socket.buffer[socket.len] = '\0';
     }
-
-    return 1;
 }
 
 void breakQueryParams(vector<string>& qs, string query) {

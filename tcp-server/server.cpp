@@ -283,18 +283,30 @@ void receiveMessage(int index)
 
 		if (sockets[index].len > 0)
 		{
-			if (sockets[index].send == IDLE) {
-				int ERROR_CODE = parseRequest(sockets[index]);
-
-				if(ERROR_CODE != -1){
-					sockets[index].send = SEND;
-				}				
-			}			
-			else if (sockets[index].req.type.compare("Exit") == 0)
-			{
-				closesocket(msgSocket);
-				removeSocket(index);
+			if (sockets[index].req.state == FINISH_LOAD) {
 				return;
+			}
+
+			if (sockets[index].req.state == START_LOAD) {
+				time(&sockets[index].lastInputTime);
+			}			
+			else 
+			{
+				time_t now;
+				time(&now);
+				double diff = difftime(now, sockets[index].lastInputTime) / 60;
+				
+				if (diff > 2) {
+					closesocket(msgSocket);
+					removeSocket(index);
+					return;
+				}
+			}
+
+			int ERROR_CODE = parseRequest(sockets[index]);
+
+			if (ERROR_CODE != -1) {
+				sockets[index].send = SEND;
 			}
 		}
 	}
@@ -346,7 +358,7 @@ void sendMessage(int index)
 {
 	int bytesSent = 0;
 	char sendBuff[255];
-	string reqType = sockets[index].req.type;
+	string reqType = sockets[index].req.method;
 
 	if (reqType == GET)
 	{
@@ -360,5 +372,8 @@ void sendMessage(int index)
 	}
 	Request newReq;
 	sockets[index].req = newReq;
-	sockets[index].send = IDLE;
+
+	if (sockets[index].len == 0) {
+		sockets[index].send = IDLE;
+	}	
 }
