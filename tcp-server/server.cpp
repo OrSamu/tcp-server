@@ -373,7 +373,5 @@ void sendMessage(int index)
 	Request newReq;
 	sockets[index].req = newReq;
 
-	if (sockets[index].len == 0) {
-		sockets[index].send = IDLE;
-	}	
+	sockets[index].send = IDLE;	
 }
