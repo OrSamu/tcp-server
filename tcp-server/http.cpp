@@ -1,6 +1,7 @@
 #include "http.h"
 
 int parseRequest(SocketState &socket) {
+
     socket.req.state = PARTIAL_LOAD;
 
     if (socket.req.method.compare("") == 0) {
@@ -118,3 +119,140 @@ void updateFile(SocketState& socket)
     fileToCreate.close();
 }
 
+Response handleRequest(Request req) {
+    StatusCode requestStatusCode = validateRequest(req);
+    Response res;
+
+    if (requestStatusCode != OK) {
+        res.statusCode = requestStatusCode;
+        res.reasonPhrase = "Method Not Allowed";
+    }
+    else {
+        if (req.method == OPTIONS)
+        {
+            //handleOptionsRequest(request, response);
+        }
+        else if (req.method == GET)
+        {
+            handleGetRequest(req, res);
+        }
+        else if (req.method == HEAD)
+        {
+            //handleHeadRequest(request, response);
+        }
+        else if (req.method == POST)
+        {
+            //handlePostRequest(request, response);
+        }
+        else if (req.method == PUT)
+        {
+            //handlePutRequest(request, response);
+        }
+        else if (req.method == DELETEREQ)
+        {
+            //handleDeleteRequest(request, response);
+        }
+        else if (req.method == TRACE)
+        {
+            //handleTraceRequest(request, response);
+        }
+    }
+
+    return res;
+}
+
+StatusCode validateRequest(Request& req) {
+    if (!isAllowedMethod(req.method))
+    {
+        return METHOD_NOT_ALLOWED;
+    }
+
+    return OK;
+}
+
+bool isAllowedMethod(string method)
+{
+    return method == OPTIONS || method == GET || method == HEAD || method == POST || method == PUT || method == DELETEREQ || method == TRACE;
+}
+
+void handleGetRequest(Request &req, Response& res) {
+    string fileName = getFileName(req.qs, req.path);
+    string sendFile = htmlFileToStr(fileName);
+
+    if (sendFile == "") {   /* check it the file was opened */
+        res.statusCode = NOT_FOUND;
+        res.reasonPhrase = "File Not Found";
+    }
+    else {
+        res.statusCode = OK;
+        res.reasonPhrase = "OK";
+        res.messageBody = sendFile;
+        res.bodyLength = sendFile.length();
+    }
+}
+
+string htmlFileToStr(string fileName) {
+    string res, curLine;
+    ifstream file(string("./").append(fileName));
+
+    while (getline(file, curLine)) {
+        res.append(curLine);
+    }
+
+    file.close();
+    return res;
+}
+
+//string responseToString(Response& res) {
+//    //string responseString;
+//
+//    //responseString.append(res.httpVersion + " ");
+//    //responseString.append(to_string(res.statusCode) + " ");
+//    //responseString.append(res.reasonPhrase + "\n");
+//
+//    //time_t timeT = time(NULL);
+//
+//    //responseString.append("Date: " + string(ctime(&timeT)));
+//    //responseString.append("Cache-Control: no-cache\n");
+//    //responseString.append("Content-Length: " + to_string(res.bodyLength) + "\n");
+//
+//    //string contentType = res.headers["Content-Type"].empty() ? "text/html" : res.headers["Content-Type"];
+//
+//    //responseString.append("Content-Type: " + contentType + "\n");
+//    //if (!res.headers["Allow"].empty())
+//    //{
+//    //    responseString.append("Allow: " + res.headers["Allow"] + "\n");
+//    //}
+//
+//    //responseString.append("\r\n" + res.messageBody);
+//
+//    //return responseString;
+//
+//    return "mom";
+//}
+
+string responseToString(Response res) {
+    string responseString;
+    
+    responseString.append(res.httpVersion + " ");
+    responseString.append(to_string(res.statusCode) + " ");
+    responseString.append(res.reasonPhrase + "\n");
+
+    time_t timeT = time(NULL);
+
+    responseString.append("Date: " + string(ctime(&timeT)));
+    responseString.append("Cache-Control: no-cache\n");
+    responseString.append("Content-Length: " + to_string(res.bodyLength) + "\n");
+
+    string contentType = res.headers["Content-Type"].empty() ? "text/html" : res.headers["Content-Type"];
+
+    responseString.append("Content-Type: " + contentType + "\n");
+    if (!res.headers["Allow"].empty())
+    {
+        responseString.append("Allow: " + res.headers["Allow"] + "\n");
+    }
+
+    responseString.append("\r\n" + res.messageBody);
+
+    return responseString;
+}

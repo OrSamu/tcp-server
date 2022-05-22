@@ -313,19 +313,6 @@ void receiveMessage(int index)
 
 }
 
-string htmlFileToStr(string fileName) {
-	string res, curLine;
-
-	ifstream file(string("./").append(fileName));
-
-	while (getline(file, curLine)) {
-		res.append(curLine);
-	}
-
-	file.close();
-	return res;
-}
-
 void sendBorat(SocketState &socket) {
 	string       text;
 	stringstream stream;
@@ -356,11 +343,32 @@ void sendBorat(SocketState &socket) {
 
 void sendMessage(int index)
 {
-	int bytesSent = 0;
-	char sendBuff[255];
-	string reqType = sockets[index].req.method;
 
-	if (reqType == GET)
+	SOCKET msgSocket = sockets[index].id;
+	Response res = handleRequest(sockets[index].req);
+	string sendBuff = responseToString(res);
+	int bytesSent = send(msgSocket, sendBuff.c_str(), (int)sendBuff.length(), 0);
+
+	if (SOCKET_ERROR == bytesSent)
+	{
+		cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;
+		return;
+	}
+
+	cout << "Http Server: Sent: " << bytesSent << "\\" << sendBuff.length() << " bytes of \"" << sendBuff << "\" message.\n";
+
+	if (sockets[index].len == 0)
+	{
+		Request newReq;
+
+		sockets[index].req = newReq;
+		sockets[index].send = IDLE;
+	}
+	//char sendBuff[255];
+	//string reqType = sockets[index].req.method;
+
+	
+	/*if (reqType == GET)
 	{
 		sendBorat(sockets[index]);
 	}
@@ -369,9 +377,5 @@ void sendMessage(int index)
 		updateFile(sockets[index]);
 		string res = "HTTP/1.1 200 OK\nContent-length:0\nContent-Type: text/plain\r\n\r\n";
 		send(sockets[index].id, res.c_str(), res.length(), 0);
-	}
-	Request newReq;
-	sockets[index].req = newReq;
-
-	sockets[index].send = IDLE;	
+	}*/
 }
