@@ -45,7 +45,6 @@ int parseHeaders(SocketState& socket) {
     while (token != nullptr)
     {
         headers.push_back(string(token));
-        cout << string(token) << endl;
         token = strtok(nullptr, " :?\r\n");
     }
 
@@ -146,7 +145,7 @@ Response handleRequest(Request req) {
         }
         else if (req.method == PUT)
         {
-            //handlePutRequest(request, response);
+            handlePutRequest(req, res);
         }
         else if (req.method == DELETEREQ)
         {
@@ -191,6 +190,27 @@ void handleGetRequest(Request &req, Response& res) {
     }
 }
 
+void handlePutRequest(Request& req, Response& res) {
+    string fileName = getFileName(req.qs, req.path);
+    ifstream readFile(fileName,ios_base::in);
+    ofstream writeFile;
+
+    if (readFile.is_open()) {
+        readFile.close();
+        res.statusCode = OK;
+        res.reasonPhrase = "OK";
+    }
+    else {
+        res.statusCode = CREATED;
+        res.reasonPhrase = "Created";
+    }
+
+    writeFile.open(fileName, ios_base::trunc);
+    writeFile << requestToString(req) << endl;
+    writeFile.close();
+
+}
+
 string htmlFileToStr(string fileName) {
     string res, curLine;
     ifstream file(string("./").append(fileName));
@@ -202,34 +222,6 @@ string htmlFileToStr(string fileName) {
     file.close();
     return res;
 }
-
-//string responseToString(Response& res) {
-//    //string responseString;
-//
-//    //responseString.append(res.httpVersion + " ");
-//    //responseString.append(to_string(res.statusCode) + " ");
-//    //responseString.append(res.reasonPhrase + "\n");
-//
-//    //time_t timeT = time(NULL);
-//
-//    //responseString.append("Date: " + string(ctime(&timeT)));
-//    //responseString.append("Cache-Control: no-cache\n");
-//    //responseString.append("Content-Length: " + to_string(res.bodyLength) + "\n");
-//
-//    //string contentType = res.headers["Content-Type"].empty() ? "text/html" : res.headers["Content-Type"];
-//
-//    //responseString.append("Content-Type: " + contentType + "\n");
-//    //if (!res.headers["Allow"].empty())
-//    //{
-//    //    responseString.append("Allow: " + res.headers["Allow"] + "\n");
-//    //}
-//
-//    //responseString.append("\r\n" + res.messageBody);
-//
-//    //return responseString;
-//
-//    return "mom";
-//}
 
 string responseToString(Response res) {
     string responseString;
@@ -255,4 +247,18 @@ string responseToString(Response res) {
     responseString.append("\r\n" + res.messageBody);
 
     return responseString;
+}
+
+string requestToString(Request& req) {
+    string requestString;
+
+    requestString.append(req.method + " ");
+    requestString.append(req.path + "\n");
+
+    requestString.append("Content Length: " + to_string(req.contentLength) + "\n");
+    if (req.contentLength > 0) {
+        requestString.append("Body:\n" + req.body);
+    }
+
+    return requestString;
 }

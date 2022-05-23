@@ -1,5 +1,6 @@
 #pragma once
 #define _CRT_SECURE_NO_WARNINGS
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -65,9 +66,11 @@ void parseBody(SocketState&);
 void breakQueryParams(vector<string> &, string);
 void updateFile(SocketState&);
 void handleGetRequest(Request& req, Response& res);
+void handlePutRequest(Request& req, Response& res);
 bool isAllowedMethod(string method);
 string htmlFileToStr(string fileName);
 string getFileName(vector<string>, string);
 string responseToString(Response res);
+string requestToString(Request& req);
 StatusCode validateRequest(Request& req);
 Response handleRequest(Request req);
