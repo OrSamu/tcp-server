@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <stdio.h>
 #include <string.h> 
 #include <winsock2.h>
 #include <vector> 
@@ -66,6 +67,11 @@ void breakQueryParams(vector<string> &, string);
 void updateFile(SocketState&);
 void handleGetRequest(Request& req, Response& res);
 void handlePutRequest(Request& req, Response& res);
+void handleHeadRequest(Request& req, Response& res);
+void handlePostRequest(Request& req, Response& res);
+void handleDeleteRequest(Request& req, Response& res);
+void handleOptionsRequest(Request& req, Response& res);
+void handleTraceRequest(Request& req, Response& res);
 bool isAllowedMethod(string method);
 string htmlFileToStr(string fileName);
 string getFileName(vector<string>, string);

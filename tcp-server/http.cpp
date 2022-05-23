@@ -127,7 +127,7 @@ Response handleRequest(Request req) {
     else {
         if (req.method == OPTIONS)
         {
-            //handleOptionsRequest(request, response);
+            handleOptionsRequest(req, res);
         }
         else if (req.method == GET)
         {
@@ -135,11 +135,11 @@ Response handleRequest(Request req) {
         }
         else if (req.method == HEAD)
         {
-            handleHeadRequest(request, response);
+            handleHeadRequest(req, res);
         }
         else if (req.method == POST)
         {
-            //handlePostRequest(request, response);
+            handlePostRequest(req, res);
         }
         else if (req.method == PUT)
         {
@@ -147,11 +147,11 @@ Response handleRequest(Request req) {
         }
         else if (req.method == DELETEREQ)
         {
-            //handleDeleteRequest(request, response);
+            handleDeleteRequest(req, res);
         }
         else if (req.method == TRACE)
         {
-            //handleTraceRequest(request, response);
+            handleTraceRequest(req, res);
         }
     }
 
@@ -245,4 +245,78 @@ string responseToString(Response res) {
     responseString.append("\r\n" + res.messageBody);
 
     return responseString;
+}
+
+string requestToString(Request& req) {
+    string requestString;
+
+    requestString.append(req.method + " ");
+    requestString.append(req.path + "\n");
+
+    requestString.append("Content Length: " + to_string(req.contentLength) + "\n");
+    if (req.contentLength > 0) {
+        requestString.append("Body:\n" + req.body);
+    }
+
+    return requestString;
+}
+
+void handleHeadRequest(Request& req, Response& res) {
+    handleGetRequest(req, res);
+    res.bodyLength = 0;
+    res.messageBody = "";
+}
+
+void handlePostRequest(Request& req, Response& res) {
+    res.statusCode = OK;
+    res.reasonPhrase = "Ok";
+    cout << "Request body: " << req.body << endl;
+}
+
+void handleDeleteRequest(Request& req, Response& res) {
+    string fileName = getFileName(req.qs, req.path);
+
+    int status = remove(fileName.c_str());
+
+    if (status == 0) {
+        res.statusCode = OK;
+        res.reasonPhrase = "Resource Deleted";
+    }
+    else {
+        res.statusCode = NOT_FOUND;
+        res.reasonPhrase = "Content Not Found";
+    }
+
+    res.bodyLength = 0;
+    res.messageBody = "";
+}
+
+void handleTraceRequest(Request& req, Response& res) {
+    string request = requestToString(req);
+
+    res.statusCode = OK;
+    res.reasonPhrase = "Ok";
+    res.bodyLength = request.length();
+    res.messageBody = request;
+}
+
+void handleOptionsRequest(Request& req, Response& res) {
+    bool hasResource = req.path.compare("/*") == 0;
+
+    if (!hasResource) {
+        string fileName = getFileName(req.qs, req.path);
+        ifstream readFile(fileName, ios_base::in);
+        hasResource = readFile.is_open();
+        if (hasResource) {
+            readFile.close();
+        }
+    }
+
+    if (hasResource) {        
+        res.headers["Allow"] = "Get, Head, Delete, ";
+    }
+
+    res.headers["Allow"].append("Post, Put, Options, Trace");
+    res.statusCode = OK;
+    res.reasonPhrase = "Ok";
 }

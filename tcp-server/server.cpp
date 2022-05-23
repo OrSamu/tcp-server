@@ -227,30 +227,6 @@ void receiveMessage(int index)
 
 }
 
-void sendBorat(SocketState &socket) {
-	string       text;
-	stringstream stream;
-	SOCKET connected = socket.id;
-	string fileName = getFileName(socket.req.qs, socket.req.path);
-	string sendFile = htmlFileToStr(fileName);
-
-	if (sendFile == "")
-		return;
-
-	long int totalBytes = sendFile.length();
-
-	stream << "HTTP/1.1 200 OK\nContent-length: " << totalBytes << "\n" << "Content-Type: text/html\r\n\r\n";
-	text = stream.str();
-	send(connected, text.c_str(), text.length(), 0);
-	int bytesSent = send(connected, sendFile.c_str(), (int)totalBytes, 0);
-
-	if (SOCKET_ERROR == bytesSent)
-	{
-		cout << "HTTP Server: Error at send(): " << WSAGetLastError() << endl;	
-		return;
-	}
-}
-
 void sendMessage(int index)
 {
 
