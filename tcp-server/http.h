@@ -74,7 +74,7 @@ void handleOptionsRequest(Request& req, Response& res);
 void handleTraceRequest(Request& req, Response& res);
 bool isAllowedMethod(string method);
 string htmlFileToStr(string fileName);
-string getFileName(vector<string>, string);
+string getFilePath(vector<string>, string);
 string responseToString(Response res);
 string requestToString(Request& req);
 StatusCode validateRequest(Request& req);

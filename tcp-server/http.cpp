@@ -91,14 +91,14 @@ void breakQueryParams(vector<string>& qs, string query) {
     }
 }
 
-string getFileName(vector<string> query, string path)
+string getFilePath(vector<string> query, string path)
 {
     short length = query.size();
-    string fileName = "en";
+    string fileName = "C:\\temp\\en";
 
     for (short i = 0; i < length; i = i + 2) {
         if (query[i].compare("lang") == 0) {
-            fileName = query[i + 1];
+            fileName = "C:\\temp\\" + query[i + 1];
         }
     }
 
@@ -110,7 +110,7 @@ string getFileName(vector<string> query, string path)
 
 void updateFile(SocketState& socket)
 {
-    string fileName = getFileName(socket.req.qs, socket.req.path);
+    string fileName = getFilePath(socket.req.qs, socket.req.path);
     ofstream fileToCreate (fileName, ios_base::trunc);
     fileToCreate << socket.req.body;
     fileToCreate.close();
@@ -173,7 +173,7 @@ bool isAllowedMethod(string method)
 }
 
 void handleGetRequest(Request &req, Response& res) {
-    string fileName = getFileName(req.qs, req.path);
+    string fileName = getFilePath(req.qs, req.path);
     string sendFile = htmlFileToStr(fileName);
 
     if (sendFile == "") {   /* check it the file was opened */
@@ -189,7 +189,7 @@ void handleGetRequest(Request &req, Response& res) {
 }
 
 void handlePutRequest(Request& req, Response& res) {
-    string fileName = getFileName(req.qs, req.path);
+    string fileName = getFilePath(req.qs, req.path);
     ifstream readFile(fileName,ios_base::in);
     ofstream writeFile;
 
@@ -209,9 +209,9 @@ void handlePutRequest(Request& req, Response& res) {
 
 }
 
-string htmlFileToStr(string fileName) {
+string htmlFileToStr(string filePath) {
     string res, curLine;
-    ifstream file(string("./").append(fileName));
+    ifstream file(filePath);
 
     while (getline(file, curLine)) {
         res.append(curLine);
@@ -274,7 +274,7 @@ void handlePostRequest(Request& req, Response& res) {
 }
 
 void handleDeleteRequest(Request& req, Response& res) {
-    string fileName = getFileName(req.qs, req.path);
+    string fileName = getFilePath(req.qs, req.path);
 
     int status = remove(fileName.c_str());
 
@@ -304,7 +304,7 @@ void handleOptionsRequest(Request& req, Response& res) {
     bool hasResource = req.path.compare("/*") == 0;
 
     if (!hasResource) {
-        string fileName = getFileName(req.qs, req.path);
+        string fileName = getFilePath(req.qs, req.path);
         ifstream readFile(fileName, ios_base::in);
         hasResource = readFile.is_open();
         if (hasResource) {
