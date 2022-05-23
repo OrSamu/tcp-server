@@ -20,8 +20,7 @@ const string HEAD = "HEAD";
 const string OPTIONS = "OPTIONS";
 
 const short START_LOAD = 0;
-const short PARTIAL_LOAD = 1;
-const short FINISH_LOAD = 2;
+const short FINISH_LOAD = 1;
 
 enum StatusCode {	OK = 200, CREATED = 201, NO_CONTENT = 204,
 					NOT_FOUND = 404, METHOD_NOT_ALLOWED = 405,

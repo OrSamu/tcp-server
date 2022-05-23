@@ -63,8 +63,9 @@ void main()
 		}
 
 		int nfd;
-		nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
-
+		auto timeout = timeval();
+		timeout.tv_sec = 120;
+		nfd = select(0, &waitRecv, &waitSend, NULL, &timeout);
 		if (nfd == SOCKET_ERROR)
 		{
 			cout << "Time Server: Error at select(): " << WSAGetLastError() << endl;
@@ -86,6 +87,20 @@ void main()
 				case RECEIVE:
 					receiveMessage(i);
 					break;
+				}
+			}
+		}
+
+		time_t now;
+		time(&now);
+		// clear all receive sockets that are stuck for more than 2 minutes
+		for (int i = 0; i < MAX_SOCKETS; i++) {
+			if (sockets[i].recv == RECEIVE && sockets[i].lastInputTime != 0) {
+				double diff = difftime(now, sockets[i].lastInputTime) / 60;
+
+				if (diff > 2) {
+					closesocket(sockets[i].id);
+					removeSocket(i);
 				}
 			}
 		}
@@ -132,6 +147,10 @@ void removeSocket(int index)
 {
 	sockets[index].recv = EMPTY;
 	sockets[index].send = EMPTY;
+	sockets[index].req = {};
+	sockets[index].id = 0;
+	sockets[index].buffer[0] = '\0';
+	sockets[index].lastInputTime = 0;
 	socketsCount--;
 }
 
@@ -167,6 +186,10 @@ void acceptConnection(int index)
 
 void receiveMessage(int index)
 {
+	if (sockets[index].req.state == FINISH_LOAD) {
+		return;
+	}
+
 	SOCKET msgSocket = sockets[index].id;
 	int len = sockets[index].len;
 	int bytesRecv = recv(msgSocket, &sockets[index].buffer[len], sizeof(sockets[index].buffer) - len, 0);
@@ -193,26 +216,7 @@ void receiveMessage(int index)
 
 		if (sockets[index].len > 0)
 		{
-			if (sockets[index].req.state == FINISH_LOAD) {
-				return;
-			}
-
-			if (sockets[index].req.state == START_LOAD) {
-				time(&sockets[index].lastInputTime);
-			}			
-			else 
-			{
-				time_t now;
-				time(&now);
-				double diff = difftime(now, sockets[index].lastInputTime) / 60;
-				
-				if (diff > 2) {
-					closesocket(msgSocket);
-					removeSocket(index);
-					return;
-				}
-			}
-
+			time(&sockets[index].lastInputTime);			
 			int ERROR_CODE = parseRequest(sockets[index]);
 
 			if (ERROR_CODE != -1) {
@@ -265,9 +269,8 @@ void sendMessage(int index)
 
 	if (sockets[index].len == 0)
 	{
-		Request newReq;
-
-		sockets[index].req = newReq;
+		sockets[index].req = {};
+		sockets[index].lastInputTime = 0;
 		sockets[index].send = IDLE;
 	}
 }

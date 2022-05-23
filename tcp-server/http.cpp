@@ -1,9 +1,6 @@
 #include "http.h"
 
 int parseRequest(SocketState &socket) {
-
-    socket.req.state = PARTIAL_LOAD;
-
     if (socket.req.method.compare("") == 0) {
         int headerError = parseHeaders(socket);
 
@@ -38,6 +35,7 @@ int parseHeaders(SocketState& socket) {
     memcpy(socket.buffer, &socket.buffer[reqEnd], socket.len - reqEnd);
     socket.len -= reqEnd;
     socket.buffer[socket.len] = '\0';
+    reqBuff[reqEnd] = '\0';
     bool hasQs = string(reqBuff).find("?");
     
     char* token = strtok(reqBuff, " :?\r\n");
