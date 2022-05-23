@@ -135,7 +135,7 @@ Response handleRequest(Request req) {
         }
         else if (req.method == HEAD)
         {
-            //handleHeadRequest(request, response);
+            handleHeadRequest(request, response);
         }
         else if (req.method == POST)
         {
@@ -204,7 +204,7 @@ void handlePutRequest(Request& req, Response& res) {
     }
 
     writeFile.open(fileName, ios_base::trunc);
-    writeFile << requestToString(req) << endl;
+    writeFile << req.body << endl;
     writeFile.close();
 
 }
@@ -245,18 +245,4 @@ string responseToString(Response res) {
     responseString.append("\r\n" + res.messageBody);
 
     return responseString;
-}
-
-string requestToString(Request& req) {
-    string requestString;
-
-    requestString.append(req.method + " ");
-    requestString.append(req.path + "\n");
-
-    requestString.append("Content Length: " + to_string(req.contentLength) + "\n");
-    if (req.contentLength > 0) {
-        requestString.append("Body:\n" + req.body);
-    }
-
-    return requestString;
 }
